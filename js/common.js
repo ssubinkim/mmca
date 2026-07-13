@@ -51,9 +51,24 @@ document.addEventListener("DOMContentLoaded", () => {
   let lastScroll = 0;
   let headerLockedByIntro = false;
   let introDone = false; // 추가
+  let introFillTl = null;
 
   window.addEventListener("scroll", () => {
-    if (headerLockedByIntro) return;
+    if (headerLockedByIntro) {
+      // 인트로 애니메이션(약 3초) 중에 사용자가 빠르게 스크롤을 내리면
+      // museum_nav가 안 접힌 채로 하단 콘텐츠(footer 등)와 겹쳐 보일 수 있어
+      // 일정 거리 이상 스크롤되면 인트로를 즉시 종료하고 헤더를 접는다.
+      if (window.scrollY > window.innerHeight * 0.6) {
+        if (introFillTl) introFillTl.kill();
+        gsap.set(header, { clearProps: "transform,opacity" });
+        header.classList.add("hide");
+        header.classList.add("shrink");
+        headerLockedByIntro = false;
+        introDone = true;
+        lastScroll = window.scrollY;
+      }
+      return;
+    }
 
     const cur = window.scrollY;
 
@@ -111,6 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     const fillTl = gsap.timeline();
+    introFillTl = fillTl;
 
     items.forEach((item, i) => {
       fillTl.fromTo(

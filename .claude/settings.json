@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -c js/main.js)",
+      "Bash(pkill -f \"http.server 8823\")",
+      "Bash(rm -f /private/tmp/claude-501/-Users-subin-Desktop-----mmca/525049c9-63d7-4abc-8b80-b2876ccd1c61/scratchpad/check_*.js)",
+      "Bash(node realistic_scroll.js)",
+      "Bash(node -e ' *)",
+      "Bash(pkill -f \"http.server 8823\" 2>/dev/null; rm -f /private/tmp/claude-501/-Users-subin-Desktop-----mmca/525049c9-63d7-4abc-8b80-b2876ccd1c61/scratchpad/click_front*.js; echo done)",
+      "Bash(rm -f /private/tmp/claude-501/-Users-subin-Desktop-----mmca/525049c9-63d7-4abc-8b80-b2876ccd1c61/scratchpad/smooth_test*.js)",
+      "Bash(node hover_test2.js)",
+      "Bash(node hover_test3.js)",
+      "Bash(node hover_test4.js)",
+      "Bash(rm -f /private/tmp/claude-501/-Users-subin-Desktop-----mmca/525049c9-63d7-4abc-8b80-b2876ccd1c61/scratchpad/hover_test*.js)",
+      "Bash(node wiggle_test.js)",
+      "Bash(node group_wiggle_test.js)",
+      "Bash(node lerp_test.js)"
+    ],
+    "additionalDirectories": [
+      "/private/tmp/claude-501/-Users-subin-Desktop-----mmca/525049c9-63d7-4abc-8b80-b2876ccd1c61/scratchpad"
+    ]
+  }
+}

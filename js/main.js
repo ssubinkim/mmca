@@ -433,21 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (groups.length) {
-    groups[0].classList.add("is-open");
-
     groups.forEach((group) => {
-      const body = group.querySelector(".news_body");
-      if (!body) return;
-
-      group.addEventListener("click", () => {
-        if (isMobile480) return;
-        if (group.classList.contains("is-open")) return;
-
-        const current = groups.find((g) => g.classList.contains("is-open"));
-        if (current) current.classList.remove("is-open");
-        group.classList.add("is-open");
-      });
-
       const cards = group.querySelectorAll(".news_card");
       cards.forEach((card) => {
         const img = card.querySelector(".news_thumb img");
@@ -461,8 +447,134 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       });
     });
+  }
 
-    // 첫 탭 카드는 CSS 애니메이션으로 처리
+  // reactbits.dev/components/scroll-stack 방식: 스크롤에 따라 카드가 쌓이며 고정/스케일된다
+  if (groups.length && !isMobile480) {
+    const STACK = {
+      itemDistance: 60,
+      itemScale: 0.035,
+      itemStackDistance: 0, // news_head 높이로 측정되어 덮어써짐 (measureNewsStack)
+      stackPosition: 0.14, // viewport height 비율
+      scaleEndPosition: 0.05,
+      baseScale: 0.86,
+    };
+
+    groups.forEach((card, i) => {
+      if (i < groups.length - 1) card.style.marginBottom = STACK.itemDistance + "px";
+    });
+
+    let cardTops = [];
+    let stackEnd = 0;
+
+    const measureNewsStack = () => {
+      const head = groups[0].querySelector(".news_head");
+      STACK.itemStackDistance = head ? head.offsetHeight : 0;
+
+      cardTops = groups.map((card) => {
+        const prevTransform = card.style.transform;
+        card.style.transform = "none";
+        const top = card.getBoundingClientRect().top + window.scrollY;
+        card.style.transform = prevTransform;
+        return top;
+      });
+      const last = groups[groups.length - 1];
+      stackEnd = cardTops[cardTops.length - 1] + last.offsetHeight;
+    };
+
+    measureNewsStack();
+
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(measureNewsStack, 200);
+    });
+
+    // order[0] = 맨 아래(가장 작게 스케일), order[마지막] = 맨 위(원본 크기)
+    let order = groups.map((_, i) => i);
+
+    const computeNewsTargets = () => {
+      const scrollTop = window.scrollY;
+      const vh = window.innerHeight;
+      const stackPx = STACK.stackPosition * vh;
+      const scaleEndPx = STACK.scaleEndPosition * vh;
+      const pinEnd = stackEnd - vh / 2;
+
+      return groups.map((card, i) => {
+        const rank = order.indexOf(i);
+        const cardTop = cardTops[i];
+        const stackOffset = STACK.itemStackDistance * rank;
+        const triggerStart = cardTop - stackPx - stackOffset;
+        const triggerEnd = cardTop - scaleEndPx;
+        const pinStart = triggerStart;
+
+        let scaleProgress = 0;
+        if (scrollTop >= triggerStart) {
+          scaleProgress =
+            triggerEnd > triggerStart
+              ? Math.min(1, (scrollTop - triggerStart) / (triggerEnd - triggerStart))
+              : 1;
+        }
+        const targetScale = STACK.baseScale + rank * STACK.itemScale;
+        const scale = 1 - scaleProgress * (1 - targetScale);
+
+        let translateY = 0;
+        if (scrollTop >= pinStart && scrollTop <= pinEnd) {
+          translateY = scrollTop - cardTop + stackPx + stackOffset;
+        } else if (scrollTop > pinEnd) {
+          translateY = pinEnd - cardTop + stackPx + stackOffset;
+        }
+
+        return { translateY, scale, rank };
+      });
+    };
+
+    // 스크롤 중엔 배경(카드)이 스크롤 위치에 딱 맞게 즉시 따라가야 "고정된" 느낌이 난다 —
+    // 여기에 lerp를 걸면 배경과 카드 사이에 미묘한 지연이 생겨 울렁거리는 느낌이 남.
+    // 그래서 스크롤 중엔 즉시 반영하고, 클릭으로 순서가 바뀔 때만 짧게 부드러운 전환을 준다.
+    let current = groups.map(() => null);
+    let reorderUntil = 0;
+    const LERP = 0.24;
+
+    const renderNewsStack = () => {
+      const targets = computeNewsTargets();
+      const smoothing = performance.now() < reorderUntil;
+
+      groups.forEach((card, i) => {
+        const target = targets[i];
+        if (!current[i] || !smoothing) {
+          current[i] = { translateY: target.translateY, scale: target.scale };
+        } else {
+          const cur = current[i];
+          cur.translateY += (target.translateY - cur.translateY) * LERP;
+          cur.scale += (target.scale - cur.scale) * LERP;
+        }
+
+        const cur = current[i];
+        card.style.transform = `translate3d(0, ${cur.translateY.toFixed(2)}px, 0) scale(${cur.scale.toFixed(4)})`;
+        card.style.zIndex = String(target.rank + 1);
+      });
+
+      requestAnimationFrame(renderNewsStack);
+    };
+
+    groups.forEach((card, i) => {
+      const head = card.querySelector(".news_head");
+      if (!head) return;
+      head.addEventListener("click", () => {
+        order = order.filter((x) => x !== i);
+        order.push(i); // 클릭한 그룹을 스택 맨 위 순서로 이동
+        reorderUntil = performance.now() + 450; // 이 전환에만 짧게 부드럽게
+      });
+    });
+
+    requestAnimationFrame(renderNewsStack);
+
+    // 이미지/폰트가 늦게 로드되면 카드 높이가 바뀌므로 다시 측정
+    window.addEventListener("load", measureNewsStack);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(measureNewsStack);
+    }
   }
 
   const mobileTabButtons = Array.from(qsa(".news_mobile_tab_btn"));

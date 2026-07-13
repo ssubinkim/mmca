@@ -811,11 +811,6 @@
     display: none;
   }
 
-  .news_group:not(.is-open) .news_card {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
   #newsPreview {
     display: none !important;
   }
